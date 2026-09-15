@@ -2,7 +2,7 @@
 
 API REST da plataforma de freelas entre alunos. Um aluno se cadastra e publica um serviço; outro aluno autenticado contrata esse serviço.
 
-Este commit cobre o **Checkpoint 1**: ambiente Docker + primeira migration Flyway com o schema inicial.
+Este commit cobre o **Checkpoint 2**: cadastro de aluno e autenticação com senha protegida por BCrypt. JWT e papéis ficam para os próximos checkpoints.
 
 ## Requisitos
 
@@ -28,6 +28,40 @@ Se preferir subir só o banco antes:
 docker compose up -d
 .\mvnw.cmd spring-boot:run
 ```
+
+## Endpoints (CP2)
+
+### Cadastro
+
+`POST /usuarios`
+
+```json
+{
+  "nome": "Ana Souza",
+  "email": "ana@fiap.com.br",
+  "senha": "senha1234",
+  "cep": "01310100"
+}
+```
+
+Resposta `201` com o usuário criado. A senha **não** volta no JSON. O papel é sempre `USER`.
+
+### Login
+
+`POST /auth/login`
+
+```json
+{
+  "email": "ana@fiap.com.br",
+  "senha": "senha1234"
+}
+```
+
+Compara a senha com o hash BCrypt. Credencial errada devolve `401`. Token JWT entra no CP3.
+
+### Consulta
+
+`GET /usuarios/{id}` — `200` ou `404`.
 
 ## Banco de dados
 
@@ -55,6 +89,7 @@ br.com.fiap.campusgigs
 ├── config
 ├── controller
 ├── dto
+├── exception
 ├── model
 ├── repository
 ├── security
