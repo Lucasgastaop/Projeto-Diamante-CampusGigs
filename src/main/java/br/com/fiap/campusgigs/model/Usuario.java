@@ -2,7 +2,7 @@ package br.com.fiap.campusgigs.model;
 
 import java.time.LocalDateTime;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import br.com.fiap.campusgigs.model.enums.PapelUsuario;
 import jakarta.persistence.Column;
@@ -13,7 +13,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -39,7 +38,7 @@ public class Usuario {
 	@Column(nullable = false, unique = true, length = 120)
 	private String email;
 
-	@Getter(AccessLevel.NONE)
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	@Column(nullable = false, length = 255)
 	private String senha;
 
@@ -65,9 +64,4 @@ public class Usuario {
 	@Column(name = "criado_em", nullable = false)
 	@Builder.Default
 	private LocalDateTime criadoEm = LocalDateTime.now();
-
-	@JsonIgnore
-	public String getSenha() {
-		return senha;
-	}
 }

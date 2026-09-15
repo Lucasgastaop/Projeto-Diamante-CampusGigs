@@ -2,7 +2,7 @@
 
 API REST da plataforma de freelas entre alunos. Um aluno se cadastra e publica um serviço; outro aluno autenticado contrata esse serviço.
 
-Este commit cobre o **Checkpoint 2**: cadastro de aluno e autenticação com senha protegida por BCrypt. JWT e papéis ficam para os próximos checkpoints.
+Este commit cobre o **Checkpoint 3**: login devolve um JWT e as rotas protegidas exigem `Authorization: Bearer`.
 
 ## Requisitos
 
@@ -29,7 +29,9 @@ docker compose up -d
 .\mvnw.cmd spring-boot:run
 ```
 
-## Endpoints (CP2)
+## Endpoints (CP3)
+
+Rotas públicas: `GET /`, `POST /usuarios`, `POST /auth/login`. O restante precisa do token.
 
 ### Cadastro
 
@@ -57,11 +59,30 @@ Resposta `201` com o usuário criado. A senha **não** volta no JSON. O papel é
 }
 ```
 
-Compara a senha com o hash BCrypt. Credencial errada devolve `401`. Token JWT entra no CP3.
+Resposta `200`:
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "tipo": "Bearer",
+  "usuario": {
+    "id": 1,
+    "nome": "Ana Souza",
+    "email": "ana@fiap.com.br",
+    "papel": "USER"
+  }
+}
+```
+
+Credencial errada devolve `401`.
 
 ### Consulta
 
-`GET /usuarios/{id}` — `200` ou `404`.
+`GET /usuarios/{id}` — envie o header `Authorization: Bearer <token>`. `200`, `401` ou `404`.
+
+```powershell
+curl -i http://localhost:8080/usuarios/1 -H "Authorization: Bearer COLAR_TOKEN_AQUI"
+```
 
 ## Banco de dados
 

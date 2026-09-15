@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import br.com.fiap.campusgigs.dto.LoginRequestDTO;
-import br.com.fiap.campusgigs.dto.UsuarioResponseDTO;
+import br.com.fiap.campusgigs.dto.LoginResponseDTO;
 import br.com.fiap.campusgigs.service.AuthService;
 import jakarta.validation.Valid;
 
@@ -21,7 +21,7 @@ public class AuthController {
 	}
 
 	@PostMapping("/login")
-	public UsuarioResponseDTO login(@Valid @RequestBody LoginRequestDTO dto) {
+	public LoginResponseDTO login(@Valid @RequestBody LoginRequestDTO dto) {
 		return authService.login(dto);
 	}
 }

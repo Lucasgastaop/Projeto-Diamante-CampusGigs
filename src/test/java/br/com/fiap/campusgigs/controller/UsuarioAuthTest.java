@@ -1,6 +1,7 @@
 package br.com.fiap.campusgigs.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,6 +26,8 @@ import com.jayway.jsonpath.JsonPath;
 @SpringBootTest
 @AutoConfigureMockMvc
 class UsuarioAuthTest {
+
+	private static final String JWT_PATTERN = "^[A-Za-z0-9-_]+\\.[A-Za-z0-9-_]+\\.[A-Za-z0-9-_]+$";
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -99,7 +103,7 @@ class UsuarioAuthTest {
 	}
 
 	@Test
-	void deveAutenticarComSenhaCorreta() throws Exception {
+	void deveAutenticarEDevolverJwt() throws Exception {
 		String email = emailUnico("login");
 		cadastrar(email, "senha1234");
 
@@ -112,8 +116,11 @@ class UsuarioAuthTest {
 								}
 								""".formatted(email)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.email").value(email))
-				.andExpect(jsonPath("$.senha").doesNotExist());
+				.andExpect(jsonPath("$.token").value(matchesPattern(JWT_PATTERN)))
+				.andExpect(jsonPath("$.tipo").value("Bearer"))
+				.andExpect(jsonPath("$.usuario.email").value(email))
+				.andExpect(jsonPath("$.usuario.papel").value("USER"))
+				.andExpect(jsonPath("$.usuario.senha").doesNotExist());
 	}
 
 	@Test
@@ -134,12 +141,14 @@ class UsuarioAuthTest {
 	}
 
 	@Test
-	void deveBuscarUsuarioPorId() throws Exception {
+	void deveBuscarUsuarioPorIdComToken() throws Exception {
 		String email = emailUnico("busca");
 		MvcResult criado = cadastrar(email, "senha1234");
 		Number id = JsonPath.read(criado.getResponse().getContentAsString(), "$.id");
+		String token = autenticar(email, "senha1234");
 
-		mockMvc.perform(get("/usuarios/{id}", id.longValue()))
+		mockMvc.perform(get("/usuarios/{id}", id.longValue())
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.id").value(id.intValue()))
 				.andExpect(jsonPath("$.email").value(email))
@@ -147,8 +156,28 @@ class UsuarioAuthTest {
 	}
 
 	@Test
+	void deveRecusarConsultaSemToken() throws Exception {
+		mockMvc.perform(get("/usuarios/{id}", 1L))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.message").value("Não autenticado"));
+	}
+
+	@Test
+	void deveRecusarConsultaComTokenInvalido() throws Exception {
+		mockMvc.perform(get("/usuarios/{id}", 1L)
+						.header(HttpHeaders.AUTHORIZATION, "Bearer token-invalido"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.message").value("Não autenticado"));
+	}
+
+	@Test
 	void deveRetornar404QuandoUsuarioNaoExiste() throws Exception {
-		mockMvc.perform(get("/usuarios/{id}", 999_999L))
+		String email = emailUnico("naoexiste");
+		cadastrar(email, "senha1234");
+		String token = autenticar(email, "senha1234");
+
+		mockMvc.perform(get("/usuarios/{id}", 999_999L)
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.message").value("Usuário não encontrado: 999999"));
 	}
@@ -165,6 +194,20 @@ class UsuarioAuthTest {
 								""".formatted(email, senha)))
 				.andExpect(status().isCreated())
 				.andReturn();
+	}
+
+	private String autenticar(String email, String senha) throws Exception {
+		MvcResult resultado = mockMvc.perform(post("/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+									"email": "%s",
+									"senha": "%s"
+								}
+								""".formatted(email, senha)))
+				.andExpect(status().isOk())
+				.andReturn();
+		return JsonPath.read(resultado.getResponse().getContentAsString(), "$.token");
 	}
 
 	private String emailUnico(String prefixo) {
