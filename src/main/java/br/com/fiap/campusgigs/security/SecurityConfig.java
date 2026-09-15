@@ -3,6 +3,7 @@ package br.com.fiap.campusgigs.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -14,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
 	@Bean
@@ -26,16 +28,20 @@ public class SecurityConfig {
 			HttpSecurity http,
 			JwtService jwtService,
 			UserDetailsService userDetailsService,
-			JwtAuthenticationEntryPoint authenticationEntryPoint) throws Exception {
+			JwtAuthenticationEntryPoint authenticationEntryPoint,
+			JwtAccessDeniedHandler accessDeniedHandler) throws Exception {
 		JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService, userDetailsService);
 
 		http
 				.csrf(csrf -> csrf.disable())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))
+				.exceptionHandling(ex -> ex
+						.authenticationEntryPoint(authenticationEntryPoint)
+						.accessDeniedHandler(accessDeniedHandler))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.GET, "/", "/error").permitAll()
 						.requestMatchers(HttpMethod.POST, "/usuarios", "/auth/login").permitAll()
+						.requestMatchers(HttpMethod.GET, "/usuarios").hasRole("ADMIN")
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

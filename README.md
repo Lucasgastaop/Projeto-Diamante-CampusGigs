@@ -2,7 +2,7 @@
 
 API REST da plataforma de freelas entre alunos. Um aluno se cadastra e publica um serviço; outro aluno autenticado contrata esse serviço.
 
-Este commit cobre o **Checkpoint 3**: login devolve um JWT e as rotas protegidas exigem `Authorization: Bearer`.
+Este commit cobre o **Checkpoint 4**: autorização por papéis. Cadastro vira `USER`; só `ADMIN` lista todos os usuários.
 
 ## Requisitos
 
@@ -29,9 +29,18 @@ docker compose up -d
 .\mvnw.cmd spring-boot:run
 ```
 
-## Endpoints (CP3)
+Na primeira subida a API cria o admin `admin@campusgigs.com` / `admin1234` (se o e-mail ainda não existir).
+
+## Endpoints (CP4)
 
 Rotas públicas: `GET /`, `POST /usuarios`, `POST /auth/login`. O restante precisa do token.
+
+| Endpoint | Quem acessa |
+| --- | --- |
+| `POST /usuarios` | Público. Papel gravado: `USER` |
+| `POST /auth/login` | Público |
+| `GET /usuarios/{id}` | `USER` ou `ADMIN` autenticado |
+| `GET /usuarios` | só `ADMIN` (`403` para `USER`) |
 
 ### Cadastro
 
@@ -46,7 +55,7 @@ Rotas públicas: `GET /`, `POST /usuarios`, `POST /auth/login`. O restante preci
 }
 ```
 
-Resposta `201` com o usuário criado. A senha **não** volta no JSON. O papel é sempre `USER`.
+Resposta `201`. A senha **não** volta no JSON. O papel é sempre `USER`.
 
 ### Login
 
@@ -59,30 +68,25 @@ Resposta `201` com o usuário criado. A senha **não** volta no JSON. O papel é
 }
 ```
 
-Resposta `200`:
+Resposta `200` com `token`, `tipo: Bearer` e `usuario` (incluindo `papel`).
 
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiJ9...",
-  "tipo": "Bearer",
-  "usuario": {
-    "id": 1,
-    "nome": "Ana Souza",
-    "email": "ana@fiap.com.br",
-    "papel": "USER"
-  }
-}
-```
+### Consulta por id
 
-Credencial errada devolve `401`.
+`GET /usuarios/{id}` — header `Authorization: Bearer <token>`. `200`, `401` ou `404`.
 
-### Consulta
+### Listagem (admin)
 
-`GET /usuarios/{id}` — envie o header `Authorization: Bearer <token>`. `200`, `401` ou `404`.
+`GET /usuarios`
 
 ```powershell
-curl -i http://localhost:8080/usuarios/1 -H "Authorization: Bearer COLAR_TOKEN_AQUI"
+# login do admin
+curl -i -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d "{\"email\":\"admin@campusgigs.com\",\"senha\":\"admin1234\"}"
+
+# listar — só passa com o token do ADMIN
+curl -i http://localhost:8080/usuarios -H "Authorization: Bearer COLAR_TOKEN_ADMIN"
 ```
+
+Token de `USER` nesta rota devolve `403`.
 
 ## Banco de dados
 
