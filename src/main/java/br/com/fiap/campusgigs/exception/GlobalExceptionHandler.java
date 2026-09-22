@@ -33,6 +33,30 @@ public class GlobalExceptionHandler {
 		return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request, null);
 	}
 
+	@ExceptionHandler(CepNaoEncontradoException.class)
+	public ResponseEntity<ErrorResponse> handleCepNaoEncontrado(
+			CepNaoEncontradoException ex, HttpServletRequest request) {
+		return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
+	}
+
+	@ExceptionHandler(CepConsultaException.class)
+	public ResponseEntity<ErrorResponse> handleCepConsulta(
+			CepConsultaException ex, HttpServletRequest request) {
+		return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request, null);
+	}
+
+	@ExceptionHandler(ForbiddenOperationException.class)
+	public ResponseEntity<ErrorResponse> handleForbidden(
+			ForbiddenOperationException ex, HttpServletRequest request) {
+		return build(HttpStatus.FORBIDDEN, ex.getMessage(), request, null);
+	}
+
+	@ExceptionHandler(BusinessRuleException.class)
+	public ResponseEntity<ErrorResponse> handleBusiness(
+			BusinessRuleException ex, HttpServletRequest request) {
+		return build(HttpStatus.CONFLICT, ex.getMessage(), request, null);
+	}
+
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleValidation(
 			MethodArgumentNotValidException ex, HttpServletRequest request) {
@@ -46,7 +70,7 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
-		return build(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request, null);
+		return build(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno", request, null);
 	}
 
 	private ErrorResponse.FieldErrorDetail toFieldError(FieldError error) {

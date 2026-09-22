@@ -2,8 +2,6 @@
 
 API REST da plataforma de freelas entre alunos. Um aluno se cadastra e publica um serviço; outro aluno autenticado contrata esse serviço.
 
-Este commit cobre o **Checkpoint 4**: autorização por papéis. Cadastro vira `USER`; só `ADMIN` lista todos os usuários.
-
 ## Requisitos
 
 - Java 21+
@@ -22,25 +20,25 @@ O Spring Boot detecta o `docker-compose.yml`, sobe o PostgreSQL e aplica a migra
 
 Health check: `GET /`
 
-Se preferir subir só o banco antes:
-
-```powershell
-docker compose up -d
-.\mvnw.cmd spring-boot:run
-```
-
 Na primeira subida a API cria o admin `admin@campusgigs.com` / `admin1234` (se o e-mail ainda não existir).
 
-## Endpoints (CP4)
+## Autenticação
 
-Rotas públicas: `GET /`, `POST /usuarios`, `POST /auth/login`. O restante precisa do token.
+Rotas públicas: `GET /`, `POST /usuarios`, `POST /auth/login`. O restante precisa de `Authorization: Bearer <token>`.
+
+Sem token ou com token inválido: `401`. Sem permissão: `403`. Violação de regra de negócio: `409`. Validação: `400`. A resposta de erro é centralizada e não expõe stack trace.
 
 | Endpoint | Quem acessa |
 | --- | --- |
-| `POST /usuarios` | Público. Papel gravado: `USER` |
+| `POST /usuarios` | Público. Papel gravado: `USER`. CEP consulta o ViaCEP |
 | `POST /auth/login` | Público |
-| `GET /usuarios/{id}` | `USER` ou `ADMIN` autenticado |
-| `GET /usuarios` | só `ADMIN` (`403` para `USER`) |
+| `GET /usuarios/{id}` | autenticado |
+| `GET /usuarios` | só `ADMIN` |
+| `POST /servicos` | autenticado (vira o prestador) |
+| `GET /servicos` | autenticado (só serviços `ATIVO`) |
+| `GET /servicos/{id}` | autenticado |
+| `PATCH /servicos/{id}/encerrar` | prestador do serviço (ou `ADMIN`) |
+| `POST /servicos/{id}/contratacoes` | autenticado, que não seja o prestador |
 
 ### Cadastro
 
@@ -55,8 +53,6 @@ Rotas públicas: `GET /`, `POST /usuarios`, `POST /auth/login`. O restante preci
 }
 ```
 
-Resposta `201`. A senha **não** volta no JSON. O papel é sempre `USER`.
-
 ### Login
 
 `POST /auth/login`
@@ -68,25 +64,36 @@ Resposta `201`. A senha **não** volta no JSON. O papel é sempre `USER`.
 }
 ```
 
-Resposta `200` com `token`, `tipo: Bearer` e `usuario` (incluindo `papel`).
+### Publicar serviço
 
-### Consulta por id
+`POST /servicos`
 
-`GET /usuarios/{id}` — header `Authorization: Bearer <token>`. `200`, `401` ou `404`.
-
-### Listagem (admin)
-
-`GET /usuarios`
-
-```powershell
-# login do admin
-curl -i -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d "{\"email\":\"admin@campusgigs.com\",\"senha\":\"admin1234\"}"
-
-# listar — só passa com o token do ADMIN
-curl -i http://localhost:8080/usuarios -H "Authorization: Bearer COLAR_TOKEN_ADMIN"
+```json
+{
+  "titulo": "Aulas de Java",
+  "descricao": "Revisão para checkpoint",
+  "categoria": "Tutoria",
+  "preco": 50.00
+}
 ```
 
-Token de `USER` nesta rota devolve `403`.
+Resposta `201`, situação `ATIVO`.
+
+### Listar publicados
+
+`GET /servicos` — só os `ATIVO`.
+
+### Contratar
+
+`POST /servicos/{id}/contratacoes`
+
+Serviço que não está ativo, o próprio anúncio ou contratação duplicada devolvem `409`.
+
+### Encerrar
+
+`PATCH /servicos/{id}/encerrar`
+
+Quem não é o prestador recebe `403`. Depois de encerrado, o serviço some da listagem e não aceita nova contratação.
 
 ## Banco de dados
 
@@ -101,7 +108,7 @@ O schema **não** é gerado pelo Hibernate (`ddl-auto=none`). Qualquer mudança 
 
 ## Testes
 
-Os testes usam H2 em memória (sem Docker):
+Os testes usam H2 em memória (sem Docker). O ViaCEP é mockado:
 
 ```powershell
 .\mvnw.cmd test
@@ -111,6 +118,7 @@ Os testes usam H2 em memória (sem Docker):
 
 ```
 br.com.fiap.campusgigs
+├── client
 ├── config
 ├── controller
 ├── dto

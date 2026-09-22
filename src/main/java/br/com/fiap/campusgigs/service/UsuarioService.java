@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import br.com.fiap.campusgigs.dto.UsuarioRequestDTO;
 import br.com.fiap.campusgigs.dto.UsuarioResponseDTO;
+import br.com.fiap.campusgigs.dto.ViaCepResponseDTO;
 import br.com.fiap.campusgigs.exception.DuplicateResourceException;
 import br.com.fiap.campusgigs.exception.ResourceNotFoundException;
 import br.com.fiap.campusgigs.model.Usuario;
@@ -19,10 +20,15 @@ public class UsuarioService {
 
 	private final UsuarioRepository usuarioRepository;
 	private final PasswordEncoder passwordEncoder;
+	private final ViaCepService viaCepService;
 
-	public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
+	public UsuarioService(
+			UsuarioRepository usuarioRepository,
+			PasswordEncoder passwordEncoder,
+			ViaCepService viaCepService) {
 		this.usuarioRepository = usuarioRepository;
 		this.passwordEncoder = passwordEncoder;
+		this.viaCepService = viaCepService;
 	}
 
 	@Transactional
@@ -31,16 +37,30 @@ public class UsuarioService {
 			throw new DuplicateResourceException("E-mail já cadastrado: " + dto.getEmail());
 		}
 
+		String cep = dto.getCep();
+		String logradouro = dto.getLogradouro();
+		String bairro = dto.getBairro();
+		String cidade = dto.getCidade();
+		String uf = dto.getUf();
+
+		if (cep != null && !cep.isBlank()) {
+			ViaCepResponseDTO endereco = viaCepService.buscar(cep);
+			logradouro = endereco.getLogradouro();
+			bairro = endereco.getBairro();
+			cidade = endereco.getLocalidade();
+			uf = endereco.getUf();
+		}
+
 		Usuario usuario = Usuario.builder()
 				.nome(dto.getNome())
 				.email(dto.getEmail())
 				.senha(passwordEncoder.encode(dto.getSenha()))
 				.papel(PapelUsuario.USER)
-				.cep(dto.getCep())
-				.logradouro(dto.getLogradouro())
-				.bairro(dto.getBairro())
-				.cidade(dto.getCidade())
-				.uf(dto.getUf())
+				.cep(cep)
+				.logradouro(logradouro)
+				.bairro(bairro)
+				.cidade(cidade)
+				.uf(uf)
 				.build();
 
 		return UsuarioResponseDTO.from(usuarioRepository.save(usuario));
